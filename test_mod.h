@@ -8,14 +8,7 @@
 struct test {
     std::string name;
     std::string message; // for failed tests
-    std::any* data = nullptr;
-    std::any* expected = nullptr;
     bool passed = false;
-
-    ~test() {
-        delete data;
-        delete expected;
-    }
 };
 
 // test result

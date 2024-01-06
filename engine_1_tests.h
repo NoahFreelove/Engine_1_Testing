@@ -6,7 +6,6 @@
 #include "test_mod.h"
 
 namespace tests {
-
     inline void DELETE_MODULE(test_mod* mod) {
         for (test_res* res : mod->results) {
             delete res;
@@ -14,21 +13,27 @@ namespace tests {
         delete mod;
     }
 
-    inline bool TEST_MODULE(test_mod &mod) {
+    inline void DELETE_MODULES(std::vector<test_mod*> &modules) {
+        for(auto &mod : modules) {
+            DELETE_MODULE(mod);
+        }
+    }
+
+    inline bool TEST_MODULE(test_mod* mod) {
         bool passed = true;
-        for(const auto& test : mod.tests) {
+        for(const auto& test : mod->tests) {
             auto res = test();
-            mod.results.push_back(res);
+            mod->results.push_back(res);
             if(!res->passed) {
                 passed = false;
             }
         }
-        mod.passed = passed;
+        mod->passed = passed;
         return passed;
     }
 
-    inline void TEST_MODULES(std::vector<test_mod> &modules) {
-        for(auto& mod : modules){
+    inline void TEST_MODULES(std::vector<test_mod*> &modules) {
+        for(auto &mod : modules){
             TEST_MODULE(mod);
         }
     }
@@ -93,24 +98,13 @@ namespace tests {
     }
 
     template<typename T>
-    std::string to_string_helper(const T& t) {
-        if constexpr (std::is_same_v<T, std::string>) {
-            return t;
-        } else {
-            return std::to_string(t);
-        }
-    }
-
-    template<typename T>
     test* TEST_EQUAL(T data, T expected, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(expected);
         if constexpr (std::is_same_v<decltype(data == expected), bool>) {
             t->passed = data == expected;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(expected) + " but got " + to_string_helper(data);
+                t->message = "Unexpected value not equal to expected in an equal test";
             return t;
         }
         t->passed = false;
@@ -123,12 +117,10 @@ namespace tests {
     test *TEST_NOT_EQUAL(T data, T expected, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(expected);
         if constexpr (std::is_same_v<decltype(data != expected), bool>) {
             t->passed = data != expected;
             if(!t->passed)
-                t->message = "Expected anything BUT " + to_string_helper(expected) + " but got " + to_string_helper(data);
+                t->message = "Expected value was equal to input value in a not equal test";
             return t;
         }
         t->passed = false;
@@ -137,74 +129,68 @@ namespace tests {
     }
 
     template<typename T>
-    test *TEST_GREATER_THAN(T data, T expected, std::string name) {
+    test *TEST_GREATER_THAN(T val1, T val2, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(expected);
+
         // make sure T supports > operator
-        if constexpr (std::is_same_v<decltype(data > expected), bool>) {
-            t->passed = data > expected;
+        if constexpr (std::is_same_v<decltype(val1 > val2), bool>) {
+            t->passed = val1 > val2;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be greater than " + to_string_helper(expected);
+                t->message = "Expected val1 to be greater than val 2";
             return t;
         }
         t->passed = false;
-        t->message = "Cannot compare types " + std::string(typeid(data).name()) + " and " + std::string(typeid(expected).name());
+        t->message = "Cannot compare types " + std::string(typeid(val1).name()) + " and " + std::string(typeid(val2).name());
         return t;
     }
 
     template<typename T>
-    test *TEST_LESS_THAN(T data, T expected, std::string name) {
+    test *TEST_LESS_THAN(T val1, T val2, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(expected);
+
         // make sure T supports > operator
-        if constexpr (std::is_same_v<decltype(data < expected), bool>) {
-            t->passed = data < expected;
+        if constexpr (std::is_same_v<decltype(val1 < val2), bool>) {
+            t->passed = val1 < val2;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be greater than " + to_string_helper(expected);
+                t->message = "Expected val1 to be less than val 2";
             return t;
         }
         t->passed = false;
-        t->message = "Cannot compare types " + std::string(typeid(data).name()) + " and " + std::string(typeid(expected).name());
+        t->message = "Cannot compare types " + std::string(typeid(val1).name()) + " and " + std::string(typeid(val2).name());
         return t;
     }
 
     template<typename T>
-    test *TEST_GREATER_THAN_OR_EQUAL(T data, T expected, std::string name) {
+    test *TEST_GREATER_THAN_OR_EQUAL(T dal1, T val2, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(expected);
         // make sure T supports >= operator
-        if constexpr (std::is_same_v<decltype(data >= expected), bool>) {
-            t->passed = data >= expected;
+        if constexpr (std::is_same_v<decltype(dal1 >= val2), bool>) {
+            t->passed = dal1 >= val2;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be greater than or equal to " + to_string_helper(expected);
+                t->message = "Expected val1 to be greater than or equal to val 2";
             return t;
         }
         t->passed = false;
-        t->message = "Cannot compare types " + std::string(typeid(data).name()) + " and " + std::string(typeid(expected).name());
+        t->message = "Cannot compare types " + std::string(typeid(dal1).name()) + " and " + std::string(typeid(val2).name());
         return t;
     }
 
     template<typename T>
-    test *TEST_LESS_THAN_OR_EQUAL(T data, T expected, std::string name) {
+    test *TEST_LESS_THAN_OR_EQUAL(T val1, T val2, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(expected);
         // make sure T supports <= operator
-        if constexpr (std::is_same_v<decltype(data <= expected), bool>) {
-            t->passed = data <= expected;
+        if constexpr (std::is_same_v<decltype(val1 <= val2), bool>) {
+            t->passed = val1 <= val2;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be less than or equal to " + to_string_helper(expected);
+                t->message = "Expected val1 to be less than or equal to val 2";
             return t;
         }
         t->passed = false;
-        t->message = "Cannot compare types " + std::string(typeid(data).name()) + " and " + std::string(typeid(expected).name());
+        t->message = "Cannot compare types " + std::string(typeid(val1).name()) + " and " + std::string(typeid(val2).name());
         return t;
     }
 
@@ -212,13 +198,11 @@ namespace tests {
     test *TEST_TRUE(T data, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(true);
         // make sure T supports == operator
         if constexpr (std::is_same_v<decltype(data == true), bool>) {
             t->passed = data == true;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be true";
+                t->message = "Expected input to be true";
             return t;
         }
         t->passed = false;
@@ -230,13 +214,11 @@ namespace tests {
     test *TEST_FALSE(T data, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(true);
         // make sure T supports == operator
         if constexpr (std::is_same_v<decltype(data == false), bool>) {
             t->passed = data == false;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be true";
+                t->message = "Expected input to be false";
             return t;
         }
         t->passed = false;
@@ -248,13 +230,27 @@ namespace tests {
     test *TEST_NULL(T data, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(NULL);
         // make sure T supports == operator
         if constexpr (std::is_same_v<decltype(data == NULL), bool>) {
             t->passed = data == NULL;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to be null";
+                t->message = "Expected input to be null";
+            return t;
+        }
+        t->passed = false;
+        t->message = "Cannot compare types " + std::string(typeid(data).name()) + " and __null";
+        return t;
+    }
+
+    template<typename T>
+    test *TEST_NULL_PTR(T* data, std::string name) {
+        const auto t = new test();
+        t->name = std::move(name);
+        // make sure T supports == operator
+        if constexpr (std::is_same_v<decltype(data == nullptr), bool>) {
+            t->passed = data == nullptr;
+            if(!t->passed)
+                t->message = "Expected input to be nullptr";
             return t;
         }
         t->passed = false;
@@ -266,13 +262,11 @@ namespace tests {
     test *TEST_NOT_NULL(T data, std::string name) {
         const auto t = new test();
         t->name = std::move(name);
-        t->data = new std::any(data);
-        t->expected = new std::any(NULL);
         // make sure T supports == operator
         if constexpr (std::is_same_v<decltype(data != NULL), bool>) {
             t->passed = data != NULL;
             if(!t->passed)
-                t->message = "Expected " + to_string_helper(data) + " to not be null";
+                t->message = "Expected input data to not be null";
             return t;
         }
         t->passed = false;
@@ -297,16 +291,12 @@ namespace tests {
         const auto t = new test();
         t->name = "FAIL TEST";
         t->message = "this was a purposeful fail test created with tests::FAIL()";
-        t->data = nullptr;
-        t->expected = nullptr;
         t->passed = false;
         return t;
     }
     inline test *PASS() {
         const auto t = new test();
         t->name = "PASS TEST";
-        t->data = nullptr;
-        t->expected = nullptr;
         t->passed = true;
         return t;
     }

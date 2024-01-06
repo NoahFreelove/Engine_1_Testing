@@ -46,20 +46,17 @@ test_res* truthy() {
 int main(){
     test_mod* mod = tests::GEN_MODULE("Module", test_test);
 
-    auto mod_list = std::vector<test_mod>();
-    mod_list.push_back(*mod);
-
-    tests::TEST_MODULE(*mod);
+    auto mod_list = std::vector<test_mod*>();
+    mod_list.push_back(mod);
 
     auto* mod2 = tests::GEN_MODULE("Truthy and Falsey", truthy, falsy);
-    tests::TEST_MODULE(*mod2);
+    mod_list.push_back(mod2);
 
-    //tests::TEST_MODULES(mod_list); // where the magic happens
 
-    //std::cout << mod->results.size() << std::endl;
+    tests::TEST_MODULES(mod_list);
+
     tests::VERIFY_MODULE_RESULTS({*mod, *mod2});
 
-    tests::DELETE_MODULE(mod);
-    tests::DELETE_MODULE(mod2);
+    tests::DELETE_MODULES(mod_list);
     return 0;
 }
