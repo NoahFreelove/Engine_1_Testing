@@ -2,9 +2,11 @@
 #define ENGINE_1_TESTING_LIBRARY_H
 
 #include <utility>
-
+#include <chrono>
 #include "test_mod.h"
 
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
 namespace tests {
     inline void DELETE_MODULE(test_mod* mod) {
         for (test_res* res : mod->results) {
@@ -22,11 +24,16 @@ namespace tests {
     inline bool TEST_MODULE(test_mod* mod) {
         bool passed = true;
         for(const auto& test : mod->tests) {
+            auto start = std::chrono::high_resolution_clock::now();
             auto res = test();
+            auto end = std::chrono::high_resolution_clock::now();
+            res->time_taken_ns = std::chrono::duration_cast<std::chrono::nanoseconds>(end - start).count();
+            res->time_taken_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
             mod->results.push_back(res);
             if(!res->passed) {
                 passed = false;
             }
+
         }
         mod->passed = passed;
         return passed;
@@ -47,51 +54,73 @@ namespace tests {
     }
 
     inline void VERIFY_TEST_RESULTS(const test_mod& mod) {
+        system(("chcp " + std::to_string(CP_UTF8) + " >nul").c_str());
+
         int passed = 0;
         int failed = 0;
         for(const auto& res : mod.results) {
             if(!res->passed) {
+                std::cout << "\033[1;31m";
                 std::cout << "- FUNCTION TEST: " << res->test_name << " FAILED" << std::endl;
+                std::cout << "\033[0m";
                 std::cout << "Test Description: " << res->test_desc << std::endl;
             }
             else {
+                std::cout << "\033[1;32m";
                 std::cout << "+ FUNCTION TEST: " << res->test_name << " PASSED" << std::endl;
-                std::cout << "Test Description: " << res->test_desc << std::endl;
+                std::cout << "\033[0m";
+                std::cout << "\033[1;37m";
+
+                std::cout << "\033[0m";
+
+                std::cout << "Test Description: \033[1;37m" << res->test_desc << "\033[0m" << std::endl;
             }
             std::cout << "    Sub-Tests: " << std::endl;
             for (const auto &test : res->tests) {
                 if (!test->passed) {
-                    std::cout << "    - Test '" << test->name << "' failed" << std::endl;
+                    std::cout << "    - \033[1;31mTest\033[1;31m '" << test->name << "' \033[1;31mfailed\033[1;31m" << std::endl;
                     std::cout << "        Fail message: " << test->message << std::endl;
                     failed++;
                 }
                 else {
-                    std::cout << "    + Test '" << test->name << "' passed" << std::endl;
+                    // green
+                    std::cout << "    + \033[1;32mTest\033[0m '" << test->name << "' \033[1;32mpassed\033[0m" << std::endl;
                     passed++;
                 }
             }
-            std::cout << std::endl << std::endl;
+            std::cout << "\033[1;30m";
+            std::cout << "Time taken: " << res->time_taken_ns << "ns or " << res->time_taken_ms << "ms" << std::endl << std::endl;
+            std::cout << "\033[0m";
         }
-        std::cout << "Total Tests Passed: " << passed << " for module: " << mod.module_name << std::endl;
-        std::cout << "Total Tests Failed: " << failed << " for module: " << mod.module_name  << std::endl;
+        std::cout << "\033[1;32m" << "Tests Passed: " << passed << ".\033[0m \033[1;31mTests Failed: " << failed << ".\033[0m" << std::endl;
+        unsigned long long total_time_ns = 0;
+        unsigned long long total_time_ms = 0;
+        for(const auto& res : mod.results) {
+            total_time_ns += res->time_taken_ns;
+            total_time_ms += res->time_taken_ms;
+        }
+        std::cout << "Total time taken to test module: " << total_time_ns << "ns or " << total_time_ms << "ms" << std::endl;
     }
 
     inline void VERIFY_MODULE_RESULTS(const std::vector<test_mod>& modules) {
-        std::cout << "Testing results for modules" << std::endl;
+        std::cout << "Testing Results For " << modules.size() << " Modules..." << std::endl;
         int passed = 0;
         int failed = 0;
+        system(("chcp " + std::to_string(CP_UTF8) + " >nul").c_str());
+
         for (const auto& mod : modules) {
-            if (!mod.passed) {
-            std::cout << "------------------------" << std::endl <<"- MODULE " << mod.module_name << " FAILED" << std::endl << "------------------------" << std::endl;
+            if (!mod.passed){
+                std::cout << std::endl <<"\033[1;34mModule\033[0m: \033[1;33m" << mod.module_name << " \033[0m\033[1;31mFAILED\033[0m" << std::endl << std::endl;
                 failed++;
             }
             else {
-            std::cout << "------------------------" << std::endl <<"+ MODULE " << mod.module_name << " PASSED" << std::endl << "------------------------" << std::endl;
+                std::cout << std::endl <<"\033[1;34mModule\033[0m: \033[1;33m" << mod.module_name << " \033[0m\033[1;32mPASSED\033[0m" << std::endl << std::endl;
                 passed++;
             }
             VERIFY_TEST_RESULTS(mod);
 
-            std::cout<< "------------------------" << std::endl << "END MODULE: " << mod.module_name << std::endl << "------------------------" << std::endl << std::endl;
+            std::cout << "\033[1;34m";
+            std::cout << std::endl << "End Module\033[0m: \033[1;33m" << mod.module_name << "\033[0m"<< std::endl << std::endl << std::endl;
         }
         std::cout << "Modules Passed: " << passed << std::endl;
         std::cout << "Modules Failed: " << failed << std::endl;

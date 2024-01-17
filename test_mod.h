@@ -17,6 +17,8 @@ struct test_res {
     std::string test_desc;
     std::vector<test*> tests = {};
     bool passed = true;
+    unsigned long long time_taken_ns = 0;
+    unsigned long long time_taken_ms = 0;
 
     template<typename... Args>
     test_res* add_tests(Args... new_tests) {
